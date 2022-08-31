@@ -2,6 +2,7 @@
 #include <stdio.h>  // printf, scanf, puts, sizeULL
 #include <stdlib.h> // srand, rand
 #include <unistd.h>
+#include <cstring>
 #include "tools.hpp"
 #include "sequential.hpp"
 #include "process.hpp"

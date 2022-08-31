@@ -1,3 +1,6 @@
+#include <sys/shm.h>
+#include <sys/wait.h>
+
 void MultiplyWithProcess(int size, int processCount)
 {
     struct timeval start, end;
@@ -6,9 +9,58 @@ void MultiplyWithProcess(int size, int processCount)
 
     int cont = 0;
 
-    int *aMatrix = (int *)malloc((size * size) * sizeof(int));
-    int *bMatrix = (int *)malloc((size * size) * sizeof(int));
-    int *product = (int *)malloc((size * size) * sizeof(int));
+    int *aMatrix, *bMatrix, *product;
+    int shmidA, shmidB, shmidP;
+    key_t keyA = 5674;
+    key_t keyB = 5675;
+    key_t keyP = 5676;
+
+    if ((shmidA = shmget(keyA, (size * size) * sizeof(int), IPC_CREAT | 0666)) < 0)
+    {
+        perror("shmget Matrix A");
+        exit(1);
+    }
+    if ((shmidB = shmget(keyB, (size * size) * sizeof(int), IPC_CREAT | 0666)) < 0)
+    {
+        perror("shmget Matrix B");
+        shmctl(shmidA, IPC_RMID, NULL);
+        exit(1);
+    }
+    if ((shmidP = shmget(keyP, (size * size) * sizeof(int), IPC_CREAT | 0666)) < 0)
+    {
+        perror("shmget Matrix P");
+        shmctl(shmidA, IPC_RMID, NULL);
+        shmctl(shmidB, IPC_RMID, NULL);
+        exit(1);
+    }
+
+    if ((aMatrix = (int *)shmat(shmidA, NULL, 0)) == (int *)-1)
+    {
+        perror("shmat Matrix A");
+        shmctl(shmidA, IPC_RMID, NULL);
+        shmctl(shmidB, IPC_RMID, NULL);
+        shmctl(shmidP, IPC_RMID, NULL);
+        exit(1);
+    }
+    if ((bMatrix = (int *)shmat(shmidB, NULL, 0)) == (int *)-1)
+    {
+        perror("shmat Matrix B");
+        shmctl(shmidA, IPC_RMID, NULL);
+        shmctl(shmidB, IPC_RMID, NULL);
+        shmctl(shmidP, IPC_RMID, NULL);
+        exit(1);
+    }
+    if ((product = (int *)shmat(shmidP, NULL, 0)) == (int *)-1)
+    {
+        perror("shmat Matrix P");
+        shmctl(shmidA, IPC_RMID, NULL);
+        shmctl(shmidB, IPC_RMID, NULL);
+        shmctl(shmidP, IPC_RMID, NULL);
+        exit(1);
+    }
+
+    // int* bMatrix = (int *)malloc((size * size) * sizeof(int));
+    // int* product = (int *)malloc((size * size) * sizeof(int));
 
     srand(time(0));
 
@@ -60,5 +112,8 @@ void MultiplyWithProcess(int size, int processCount)
         }
     }
     gettimeofday(&end, NULL);
+    shmctl(shmidA, IPC_RMID, NULL);
+    shmctl(shmidB, IPC_RMID, NULL);
+    shmctl(shmidP, IPC_RMID, NULL);
     printf("%f", calcTime(start, end));
 }
